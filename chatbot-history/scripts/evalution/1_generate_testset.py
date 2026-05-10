@@ -5,7 +5,7 @@ from openai import OpenAI  # We still use this SDK, but configured for Perplexit
 from app.config.settings import settings
 
 # --- CONFIG PERPLEXITY ---
-PERPLEXITY_API_KEY = os.getenv("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")  # Ensure this is set
+PERPLEXITY_API_KEY = os.getenv("key here")  # Ensure this is set
 PERPLEXITY_BASE_URL = "https://api.perplexity.ai"
 PERPLEXITY_MODEL = "llama-3.1-sonar-large-128k-chat"  # Good for reasoning
 
