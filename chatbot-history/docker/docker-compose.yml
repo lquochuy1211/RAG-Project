@@ -1,0 +1,113 @@
+version: "3.9"
+
+services:
+  # ==================== BACKEND SERVICE ====================
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: chatbot_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../:/app
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    networks:
+      - chatbot_network
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+
+# ==================== ✨ CRAWLER SERVICE (Dịch vụ chạy script) ✨ ====================
+  crawler:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: chatbot_crawler
+
+    volumes:
+      - ../:/app
+
+    env_file:
+      - ../.env
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+
+    networks:
+      - chatbot_network
+
+    command: ["sleep", "infinity"]
+
+
+
+  # ==================== QDRANT ====================
+  qdrant:
+    image: qdrant/qdrant:v1.8.0
+    container_name: qdrant_db
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./volumes/qdrant_data:/qdrant/storage
+    networks:
+      - chatbot_network
+    restart: unless-stopped
+
+  # ==================== POSTGRESQL ====================
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../.env
+    volumes:
+      - ./volumes/postgres_data:/var/lib/postgresql/data
+      - ../migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==================== PGADMIN (Optional) ====================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_ui
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+    volumes:
+      - ./volumes/pgadmin_data:/var/lib/pgadmin
+    restart: unless-stopped
+    networks:
+      - chatbot_network
+    depends_on:
+      - postgres
+
+# ==================== NETWORKS ====================
+networks:
+  chatbot_network:
+    driver: bridge
+
+# ==================== VOLUMES ====================
+# Phần này không cần thiết khi bạn đã khai báo volume trực tiếp ở trên
+# volumes:
+#   qdrant_data:
+#   postgres_data:
+#   pgadmin_data:
